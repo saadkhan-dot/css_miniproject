@@ -667,6 +667,25 @@ body {
     50% { transform: scaleX(-1) translateY(-2px); }
 }
 
+/* Jumping animation */
+.mario-game-sprite.jumping .mario-game-icon {
+    animation: marioJump 0.4s ease-out infinite;
+}
+
+.mario-game-sprite.jumping.facing-left .mario-game-icon {
+    animation: marioJumpLeft 0.4s ease-out infinite;
+}
+
+@keyframes marioJump {
+    0%, 100% { transform: scaleX(1) scaleY(1); }
+    50% { transform: scaleX(0.9) scaleY(1.15); }
+}
+
+@keyframes marioJumpLeft {
+    0%, 100% { transform: scaleX(-1) scaleY(1); }
+    50% { transform: scaleX(-0.9) scaleY(1.15); }
+}
+
 /* Climbing animation */
 .mario-game-sprite.climbing .mario-game-icon {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect fill="%23e52521" x="3" y="0" width="10" height="6"/><rect fill="%230033cc" x="2" y="6" width="12" height="8"/><rect fill="%23ffa500" x="0" y="4" width="3" height="4"/><rect fill="%23ffa500" x="13" y="4" width="3" height="4"/></svg>');

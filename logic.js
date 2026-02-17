@@ -41,7 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
         isClimbing: false,
         onLadder: false,
         facingRight: true,
-        currentPlatform: 1
+        currentPlatform: 1,
+        // Jump physics
+        velocityY: 0,
+        isJumping: false,
+        jumpStrength: 0.9,  // initial upward velocity (% per frame)
+        gravity: 0.08       // gravity pull per frame
     };
     
     // Platform Data (Approximate % Keypoints)
@@ -118,14 +123,20 @@ document.addEventListener('DOMContentLoaded', function() {
             moving = true;
         }
         
+        // 3. Jump (Spacebar) — only when on a platform and not already jumping/climbing
+        if (keys.Space && !mario.isJumping && !mario.isClimbing && mario.currentPlatform !== null) {
+            mario.isJumping = true;
+            mario.velocityY = mario.jumpStrength;
+        }
+        
         // --- Physics & Collision ---
         
         // Check for ladder interaction
         const ladder = getCollidingLadder(mario.x);
         
         if (ladder) {
-            // Near a ladder
-            if (keys.ArrowUp || keys.ArrowDown) {
+            // Near a ladder — only start climbing if NOT mid-jump
+            if ((keys.ArrowUp || keys.ArrowDown) && !mario.isJumping) {
                 mario.isClimbing = true;
                 if (Math.abs(mario.x - ladder.x) < 2) {
                     mario.x = ladder.x; 
@@ -163,8 +174,42 @@ document.addEventListener('DOMContentLoaded', function() {
             // Visuals
             el.classList.add('climbing');
             el.classList.remove('walking');
+            el.classList.remove('jumping');
             if (!moving) icon.style.animationPlayState = 'paused';
             else icon.style.animationPlayState = 'running';
+            
+        } else if (mario.isJumping) {
+            // --- Jump Physics ---
+            // Apply velocity
+            mario.y += mario.velocityY;
+            // Apply gravity
+            mario.velocityY -= mario.gravity;
+            
+            // Allow horizontal movement while jumping
+            let newX = mario.x + dx;
+            const plat = platforms.find(p => p.id === mario.currentPlatform);
+            if (plat) {
+                if (newX < plat.xMin) newX = plat.xMin;
+                if (newX > plat.xMax) newX = plat.xMax;
+            }
+            mario.x = newX;
+            
+            // Check if landed back on platform
+            if (plat) {
+                const platformY = getPlatformY(plat, mario.x);
+                if (mario.y <= platformY) {
+                    mario.y = platformY;
+                    mario.isJumping = false;
+                    mario.velocityY = 0;
+                }
+            }
+            
+            // Visuals
+            el.classList.remove('climbing');
+            el.classList.remove('walking');
+            el.classList.add('jumping');
+            if (mario.facingRight) el.classList.remove('facing-left');
+            else el.classList.add('facing-left');
             
         } else {
             // Walking Logic (On Platform)
@@ -183,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Visuals
             el.classList.remove('climbing');
+            el.classList.remove('jumping');
             if (moving) {
                 el.classList.add('walking');
                 if (mario.facingRight) el.classList.remove('facing-left');
@@ -255,6 +301,10 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'controls':
                 console.log('Showing Controls...');
                 showControls();
+                break;
+            case 'about':
+                console.log('Showing About...');
+                showAbout();
                 break;
         }
     }
@@ -721,6 +771,73 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(overlay);
         
         // Close on ESC or click
+        function closeOverlay(e) {
+            if (e.key === 'Escape' || e.type === 'click') {
+                overlay.remove();
+                document.removeEventListener('keydown', closeOverlay);
+            }
+        }
+        
+        document.addEventListener('keydown', closeOverlay);
+        overlay.addEventListener('click', closeOverlay);
+    }
+
+    // Show about overlay
+    function showAbout() {
+        const overlay = document.createElement('div');
+        overlay.id = 'aboutOverlay';
+        overlay.innerHTML = `
+            <div class="about-content">
+                <h2>ABOUT</h2>
+                <p>DONKEY KONG</p>
+                <p style="font-size:10px; margin-top:10px;">Donkey Kong was created by</p>
+                <p style="font-size:10px; margin-top:10px; color:#ffd700;">Shigeru Miyamoto</p>
+                <p style="font-size:10px; margin-top:10px;">who was an employee at Nintendo</p>
+                <p class="close-hint">Press ESC to close</p>
+            </div>
+        `;
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        `;
+        
+        const content = overlay.querySelector('.about-content');
+        content.style.cssText = `
+            text-align: center;
+            color: white;
+            font-family: 'Press Start 2P', cursive;
+        `;
+        
+        const h2 = content.querySelector('h2');
+        h2.style.cssText = `
+            color: #ff3333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        `;
+        
+        const paragraphs = content.querySelectorAll('p');
+        paragraphs.forEach(p => {
+            if (!p.style.fontSize) p.style.fontSize = '14px';
+            p.style.margin = p.style.margin || '15px 0';
+        });
+        
+        const hint = content.querySelector('.close-hint');
+        hint.style.cssText = `
+            margin-top: 40px;
+            font-size: 10px;
+            color: #888;
+        `;
+        
+        document.body.appendChild(overlay);
+        
         function closeOverlay(e) {
             if (e.key === 'Escape' || e.type === 'click') {
                 overlay.remove();
